@@ -1,0 +1,8 @@
+[package]
+
+name = "sha256"
+version = "0.0.1"
+authors = [ "Neil Moore <neil.a.moore@outlook.com>"]
+
+[dependencies]
+ncurses = "5.73.0"
