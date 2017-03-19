@@ -25,26 +25,33 @@ fn input_string() -> String
 
     while running
     {
-        let input:i32 = wgetch(stdscr);
+        let input = wget_wch(stdscr());
 
         let mut ch:char;
-        let ch_result = char::from_u32(input as u32);
-        match ch_result
+        match input
         {
-            Some(x) => ch = x,
-            None => ch = '\0'
-        }
+            Some(WchResult::Char(c)) => {
+                let ch_result = char::from_u32(c);
+                match ch_result
+                {
+                    Some(x) => ch = x,
+                    None => ch = '\0'
+                }
+            }
 
-        if input == KEY_BACKSPACE || input == 0x7f
-        {
-            let x:i32 = getcurx(stdscr);
-            let y:i32 = getcury(stdscr);
-            mv(y, x-1);
-            refresh();
-            delch();
-            refresh();
-            ret_string.pop();
-            ch = '\0'
+            Some(WchResult::KeyCode(KEY_BACKSPACE)) => {
+                let x:i32 = getcurx(stdscr());
+                let y:i32 = getcury(stdscr());
+                mv(y, x-1);
+                refresh();
+                delch();
+                refresh();
+                ret_string.pop();
+                ch = '\0';
+            }
+
+            Some(WchResult::KeyCode(_)) => continue,
+            None => continue
         }
 
         if ch == '\n'
@@ -55,8 +62,16 @@ fn input_string() -> String
 
         if ch != '\0'
         {
-            wechochar(stdscr, input as u64);
-            ret_string.push(ch);
+            match(input)
+            {
+                Some(WchResult::Char(c)) => {
+                    wechochar(stdscr(), c);
+                    ret_string.push(ch);
+                }
+
+                Some(WchResult::KeyCode(_)) => continue,
+                None => continue
+            }
         }
 
         refresh();
@@ -86,7 +101,7 @@ fn get_filename(reason:&str) -> String
             _ => { choosing = false; retry = true; }
         }
 
-        wechochar(stdscr, input as u64);
+        wechochar(stdscr(), input as u32);
         printw("\n");
     }
 
@@ -104,7 +119,7 @@ fn main()
 {
     initscr();
 
-    keypad(stdscr, true);
+    keypad(stdscr(), true);
     noecho();
 
     let mut filename:String;
