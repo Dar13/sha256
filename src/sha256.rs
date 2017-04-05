@@ -6,40 +6,38 @@
 
 use std::num::*;
 
-extern crate ncurses;
-use ncurses::*;
+pub static SHA256_CONSTS:[u32; 64] = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
 
-pub static SHA256_CONSTS:[u32; 64] = [0x982f8a42, 0x91443771, 0xcffb0fb5,
-                                      0xa5dbb5e9, 0x5bc25639, 0xf111f159,
-                                      0xa4823f92, 0xd55e1cab, 0x98aa07d8,
-                                      0x015b8312, 0xbe853124, 0xc37d0c55,
-                                      0x745dbe72, 0xfeb1de80, 0xa706dc9b,
-                                      0x74f19bc1, 0xc1699be4, 0x8647beef,
-                                      0xc69dc10f, 0xcca10c24, 0x6f2ce92d,
-                                      0xaa84744a, 0xdca9b95c, 0xda88f976,
-                                      0x52513e98, 0x6dc631a8, 0xc82703b0,
-                                      0xc77f59bf, 0xf30be0c6, 0x4791a7d5,
-                                      0x5163ca06, 0x67292914, 0x850ab727,
-                                      0x38211b2e, 0xfc6d2c4d, 0x130d3853,
-                                      0x54730a65, 0xbb0a6a76, 0x2ec9c281,
-                                      0x852c7292, 0xa1e8bfa2, 0x4b661aa8,
-                                      0x708b4bc2, 0xa3516cc7, 0x19e892d1,
-                                      0x240699d6, 0x85350ef4, 0x70a06a10,
-                                      0x16c1a419, 0x086c371e, 0x4c774827,
-                                      0xb5bcb034, 0xb30c1c39, 0x4aaad84e,
-                                      0x4fca9c5b, 0xf36f2e68, 0xee828f74,
-                                      0x6f63a578, 0x1478c884, 0x0802c78c,
-                                      0xfaffbe90, 0xeb6c50a4, 0xf7a3f9be,
-                                      0xf27871c6];
+struct fipsU32 {
+    value: u64
+}
+
+impl fipsU32 {
+    fn value(&self) -> u32 {
+        self.value as u32
+    }
+
+    fn add(&mut self, other:u32) -> &mut fipsU32 {
+        self.value = self.value + other as u64;
+        self.value = self.value % 2u64.pow(32);
+        self
+    }
+}
 
 pub fn calc_hash(mut data: &mut Vec<u8>) -> Option<Vec<u32>>
 {
-    printw("Padding message\n");
+    print!("Padding message\n");
 
     pad_message(&mut data);
 
-
-    printw("Parsing message\n");
+    print!("Parsing message\n");
     let mut message_blocks: Vec<Box<[u32; 16]>> = parse_message(&mut data);
 
     let hash_init_values: [u32; 8] = [ 0x6a09e667, 0xbb67ae85, 0x3c6ef372,
@@ -80,6 +78,7 @@ fn pad_message(data: &mut Vec<u8>)
         // Has to be OR'd with the size in a specific way.
         // TODO: Implement this, or enforce that the length
         //       of this message in bits is a multiple of 8.
+        println!("Implement missing functionality in pad_message!");
     }
 
     let mut zero_bytes: u32 = 0;
@@ -96,23 +95,21 @@ fn pad_message(data: &mut Vec<u8>)
         data.push((len_binary >> ((7 - i) * 8)) as u8);
     }
 
-    /*
     // Debugging output.
     let mut line_count: u32 = 0;
     let mut word_count: u32 = 0;
     for byte in data
     {
-        printw(&(byte.to_string())[..]);
+        print!("{:02X} ", byte);
         word_count = word_count + 1;
-        printw(" ");
         line_count = line_count + 1;
-        if line_count > 5
+        if line_count > 7
         {
             line_count = 0;
-            printw("\n");
+            println!();
         }
     }
-    */
+    println!("{} bytes\n", word_count);
 }
 
 /**
@@ -125,25 +122,25 @@ fn parse_message(data: &mut Vec<u8>) -> Vec<Box<[u32;16]>>
     let num_blocks: u32 = (data.len() / 64) as u32;
     let mut blocks: Vec<Box<[u32;16]>> = Vec::new();
 
-    /*
     // Debugging output
-    printw("Num blocks: ");
-    printw(&(num_blocks.to_string())[..]);
-    printw("\n");
-    */
+    print!("Number of blocks: {}\n", &(num_blocks.to_string())[..]);
 
+    let mut byte_idx:usize = 0;
     for block_idx in 0 .. num_blocks
     {
+        // A 512-bit block
         let mut block: Box<[u32;16]> = Box::new([0;16]);
 
-        for byte_idx in 0 .. 16
+        let mut mini_block:u32;
+        for i in 0 .. 16
         {
-            let idx: usize = (block_idx * 64) as usize + (byte_idx as usize);
-            let x:u32 = (((data[idx] as u32) << 24)        |
-                         ((data[idx + 1] as u32) << 16)    |
-                         ((data[idx + 2] as u32) << 8)     |
-                         ((data[idx + 3] as u32) ));
-            block[byte_idx] = x;
+            mini_block = 0;
+            for j in (0 .. 4).rev()
+            {
+                mini_block = mini_block | ((data[byte_idx] as u32) << (j * 8));
+                byte_idx += 1;
+            }
+            block[i] = mini_block;
         }
 
         blocks.push(block);
@@ -169,35 +166,38 @@ fn compute_hash(hash: &mut Vec<u32>, data: &mut Vec<Box<[u32;16]>>) -> Option<Ve
         let mut message_sched: [u32;64] = [0;64];
         let block = data.get(i - 1);
 
+        print!("Setting up Message Scheduler\n");
+
         for t in 0 .. 16
         {
             match block
             {
                 Some(x) => message_sched[t] = x[t],
-                None => { printw("Block is invalid!\n");
+                None => { print!("Block is invalid!\n");
                           return None; }
             };
+            println!("Schedule {:02}: {:08x}", t, message_sched[t]);
         }
 
         for t in 16 .. 64
         {
             // Specification says that addition is performed modulo 32.
             // Isn't that just equivalent of wrapping?
-            let mut x = lower_sigma_1(message_sched[t - 2]);
-            x = u32::wrapping_add(x, message_sched[t - 7]);
-            x = u32::wrapping_add(x, lower_sigma_0(message_sched[t - 15]));
-            x = u32::wrapping_add(x, message_sched[t -16]);
-            message_sched[t] = x;
-        }
+            let s0 = lower_sigma_0(message_sched[t - 15]);
+            let s1 = lower_sigma_1(message_sched[t - 2]);
 
-        printw("Setting up Message Scheduler\n");
-        refresh();
+            let mut word:fipsU32 = fipsU32{ value: 0u64 };
+            word.add(message_sched[t-16]).add(s0).add(message_sched[t-7]).add(s1);
+
+            message_sched[t] = word.value();
+            println!("{:02}: {:08x}", t, message_sched[t]);
+        }
 
         let mut initial_hash: Vec<u32> = Vec::new();
         match hash_values.get(i - 1)
         {
             Some(x) => initial_hash.clone_from(x),
-            None => { printw("Initial hash values missing!\n");
+            None => { print!("Initial hash values missing!\n");
                       return None; }
         };
         
@@ -210,6 +210,9 @@ fn compute_hash(hash: &mut Vec<u32>, data: &mut Vec<Box<[u32;16]>>) -> Option<Ve
         let mut g:u32 = initial_hash[6];
         let mut h:u32 = initial_hash[7];
 
+        println!("Initial: {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x}",
+                 a, b, c, d, e, f, g, h);
+
         for t in 0 .. 64
         {
             let mut t1:u32 = h;
@@ -218,8 +221,19 @@ fn compute_hash(hash: &mut Vec<u32>, data: &mut Vec<Box<[u32;16]>>) -> Option<Ve
             t1 = t1.wrapping_add(SHA256_CONSTS[t]);
             t1 = t1.wrapping_add(message_sched[t]);
 
+            let mut test_t1:fipsU32 = fipsU32{ value: h as u64 };
+            test_t1.add(upper_sigma_1(e));
+            test_t1.add(ch(e,f,g));
+            test_t1.add(SHA256_CONSTS[t]);
+            test_t1.add(message_sched[t]);
+
             let mut t2:u32 = upper_sigma_0(a);
             t2 = t2.wrapping_add(maj(a,b,c));
+
+            let mut test_t2:fipsU32 = fipsU32{ value: upper_sigma_0(a) as u64 };
+            test_t2.add(maj(a,b,c));
+
+            println!("t1 = {:08x}, k[i] = {:08x}", t1, SHA256_CONSTS[t]);
 
             h = g;
             g = f;
@@ -229,6 +243,9 @@ fn compute_hash(hash: &mut Vec<u32>, data: &mut Vec<Box<[u32;16]>>) -> Option<Ve
             c = b;
             b = a;
             a = t1.wrapping_add(t2);
+
+            println!("{:02}: {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x}",
+                     t, a, b, c, d, e, f, g, h);
         }
 
         let mut hash_value: Vec<u32> = Vec::new();
@@ -243,22 +260,21 @@ fn compute_hash(hash: &mut Vec<u32>, data: &mut Vec<Box<[u32;16]>>) -> Option<Ve
 
         for tmp in 0 .. 8
         {
-            printw(&(hash_value[tmp].to_string())[..]);
-            printw("\n");
+            //print!("{}\n",&(hash_value[tmp].to_string())[..]);
+            print!("{:08x} ",hash_value[tmp]);
         }
-        refresh();
+        println!();
 
         hash_values.push(hash_value);
     }
 
-    printw("SHA-256 algorithm finished\n");
-    refresh();
+    print!("SHA-256 algorithm finished\n");
 
     let mut final_hash: Vec<u32> = Vec::new();
     match hash_values.last()
     {
         Some(x) => final_hash.clone_from(x),
-        None => { printw("Final hash value not found\n");
+        None => { print!("Final hash value not found\n");
                   return None; }
     };
 
@@ -272,7 +288,7 @@ fn ch(x:u32, y:u32, z:u32) -> u32
 
 fn maj(x:u32, y:u32, z:u32) -> u32
 {
-    return (x & y) ^ (x & z) ^ (y ^ z);
+    return (x & y) ^ (x & z) ^ (y & z);
 }
 
 /**
@@ -285,9 +301,15 @@ fn rotate_right(x:u32, amt:u32) -> u32
     // 10110011101|01111
     // rotate by 5
     // 01111|10110011101
-    let upper :u32 = x << (32 - amt);
-    let lower :u32 = x >> amt;
-    return upper | lower;
+    //let upper :u32 = x << (32 - amt);
+    //let lower :u32 = x >> amt;
+    //return upper | lower;
+    return x.rotate_right(amt);
+}
+
+fn rotate_left(x:u32, amt:u32) -> u32
+{
+    return x.rotate_left(amt);
 }
 
 fn upper_sigma_0(x:u32) -> u32
