@@ -11,7 +11,6 @@ mod sha256;
 
 // Standard library
 use std::io::stdin;
-use std::char;
 use std::env::*;
 
 fn stdin_input() -> String
@@ -41,7 +40,7 @@ fn main()
     }
     else
     {
-        let mut filename:String;
+        let filename:String;
         // Not sure if nth is zero-based or not.
         let file_arg = arg.nth(1);
         match file_arg
@@ -74,11 +73,11 @@ fn main()
         },
     };
 
-    println!("Printing SHA-256 message digest");
+    println!("SHA-256 message digest:");
 
     for i in 0 .. 8
     {
-        print!("{:08x} ",hash_value[i]);
+        print!("{:08x}",hash_value[i]);
     }
     println!();
 }
